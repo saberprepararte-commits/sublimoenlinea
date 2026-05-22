@@ -1806,31 +1806,11 @@ svg {
     position: relative;
     inset: auto;
     z-index: 0;
-    height: clamp(500px, 130vw, 550px);
+    height: clamp(270px, 76vw, 350px);
     overflow: hidden;
-    background: #f1f4f6;
-  }
-
-  .hero-banner .hero-media::before,
-  .hero-banner .hero-media::after {
-    position: absolute;
-    left: 0;
-    width: 100%;
     background-image: url("./hero-sublimo-mobile.png");
     background-repeat: no-repeat;
-    background-size: 100% auto;
-    content: "";
-  }
-
-  .hero-banner .hero-media::before {
-    top: 0;
-    height: 59%;
-    background-position: center top;
-  }
-
-  .hero-banner .hero-media::after {
-    bottom: 0;
-    height: 42%;
+    background-size: 150% auto;
     background-position: center bottom;
   }
 
