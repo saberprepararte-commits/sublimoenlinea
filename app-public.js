@@ -2,6 +2,13 @@ const STORAGE_KEY = "gallery-store-template-v1";
 const THEME_KEY = "gallery-store-theme";
 const PROMO_DISMISS_KEY = "sublimo-promo-dismissed";
 const PAGE_SIZE = 24;
+const ROULETTE_MIN_DURATION = 3000;
+const ROULETTE_MAX_DURATION = 5000;
+const VISUAL_THEMES = [
+  { id: "urbano", label: "Urbano" },
+  { id: "dulce", label: "Dulce" },
+  { id: "minimal", label: "Minimal" }
+];
 
 const starterProducts = [
   {
@@ -58,6 +65,14 @@ const starterProducts = [
 
 let store = loadStore();
 let visibleProductCount = PAGE_SIZE;
+let rouletteState = {
+  product: null,
+  hasResult: false,
+  spinning: false,
+  intervalId: null,
+  timeoutId: null,
+  poolKey: ""
+};
 
 const els = {
   storeNameLabel: document.querySelector("#storeNameLabel"),
@@ -86,7 +101,8 @@ const els = {
   quickViewDescription: document.querySelector("#quickViewDescription"),
   quickViewPrice: document.querySelector("#quickViewPrice"),
   quickViewWhatsapp: document.querySelector("#quickViewWhatsapp"),
-  themeToggle: document.querySelector("#themeToggle")
+  themeToggle: document.querySelector("#themeToggle"),
+  themeLabel: document.querySelector("#themeLabel")
 };
 
 function loadStore() {
@@ -113,8 +129,7 @@ function loadStore() {
 }
 
 async function init() {
-  const theme = localStorage.getItem(THEME_KEY);
-  if (theme === "dark") document.documentElement.classList.add("dark");
+  applyVisualTheme(getInitialVisualTheme());
 
   await loadProductsFromSupabase();
   await loadSettingsFromSupabase();
@@ -280,6 +295,10 @@ function closePromoBanner() {
 
 function resetProductView() {
   visibleProductCount = PAGE_SIZE;
+  clearRouletteTimers();
+  rouletteState.product = null;
+  rouletteState.hasResult = false;
+  rouletteState.poolKey = "";
   renderProducts();
   syncCategoryChips();
 }
@@ -357,6 +376,10 @@ function renderProducts() {
   els.emptyState.hidden = products.length > 0;
   const visibleProducts = products.slice(0, visibleProductCount);
 
+  if (products.length) {
+    els.productGrid.append(createRouletteCard(products));
+  }
+
   visibleProducts.forEach((product) => {
     const card = document.createElement("article");
     card.className = "product-card";
@@ -408,6 +431,95 @@ function renderProducts() {
   refreshIcons();
 }
 
+function createRouletteCard(products) {
+  const poolKey = products.map((product) => product.id || product.name).join("|");
+  if (rouletteState.poolKey !== poolKey) {
+    rouletteState.poolKey = poolKey;
+    rouletteState.product = products[0];
+    rouletteState.hasResult = false;
+    clearRouletteTimers();
+  }
+
+  const currentProduct = rouletteState.product || products[0];
+  const hasResult = rouletteState.hasResult && !rouletteState.spinning;
+  const card = document.createElement("article");
+  card.className = `product-card roulette-card${rouletteState.spinning ? " is-spinning" : ""}`;
+  card.setAttribute("aria-live", "polite");
+  card.innerHTML = `
+    <div class="product-image roulette-image">
+      <img src="${escapeAttribute(normalizeImageUrl(currentProduct.image))}" alt="${escapeAttribute(currentProduct.name)}" loading="lazy">
+      <span class="badge">${escapeHtml(rouletteState.spinning ? "Girando" : "Sorpresa")}</span>
+      <div class="roulette-orbit" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
+    <div class="product-body">
+      <div class="product-meta">
+        <span>${escapeHtml(rouletteState.spinning ? "Ruleta Sublimo" : currentProduct.category)}</span>
+        <span>${escapeHtml(rouletteState.spinning ? "Eligiendo..." : currentProduct.status)}</span>
+      </div>
+      <h3>${escapeHtml(rouletteState.spinning || hasResult ? currentProduct.name : "Descubre tu camiseta")}</h3>
+      <p>${escapeHtml(rouletteState.spinning ? "Estamos mezclando las opciones de la galería." : hasResult ? "Esta fue la camiseta elegida por la ruleta. Puedes ver el detalle o consultarla por WhatsApp." : "Presiona jugar y deja que la tienda elija una camiseta al azar para ti.")}</p>
+      <div class="product-footer roulette-footer">
+        <span class="price">${escapeHtml(rouletteState.spinning ? "3 a 5 segundos" : hasResult ? formatPrice(currentProduct.price) : "Juego aleatorio")}</span>
+        <button class="roulette-button" type="button" ${rouletteState.spinning ? "disabled" : ""}>
+          <span data-icon="${rouletteState.spinning ? "sparkles" : "shuffle"}"></span>
+          ${rouletteState.spinning ? "Girando..." : hasResult ? "Jugar otra vez" : "Jugar"}
+        </button>
+      </div>
+      <div class="roulette-result"${!hasResult ? " hidden" : ""}>
+        <button class="ghost-button roulette-detail" type="button">
+          <span data-icon="eye"></span>
+          Ver detalle
+        </button>
+        <a class="whatsapp-button roulette-whatsapp" href="${getWhatsappUrl(buildRouletteMessage(currentProduct))}" target="_blank" rel="noopener" aria-label="Consultar ${escapeAttribute(currentProduct.name)} por WhatsApp" title="Consultar por WhatsApp">
+          <span data-icon="message-circle"></span>
+        </a>
+      </div>
+    </div>
+  `;
+
+  card.querySelector(".roulette-button")?.addEventListener("click", () => startRoulette(products));
+  card.querySelector(".roulette-detail")?.addEventListener("click", () => openQuickView(currentProduct));
+  return card;
+}
+
+function startRoulette(products) {
+  if (!products.length || rouletteState.spinning) return;
+
+  clearRouletteTimers();
+  rouletteState.spinning = true;
+  rouletteState.hasResult = false;
+  let index = Math.floor(Math.random() * products.length);
+  rouletteState.product = products[index];
+  renderProducts();
+
+  rouletteState.intervalId = window.setInterval(() => {
+    index = (index + 1 + Math.floor(Math.random() * Math.max(1, products.length - 1))) % products.length;
+    rouletteState.product = products[index];
+    renderProducts();
+  }, 95);
+
+  const duration = ROULETTE_MIN_DURATION + Math.random() * (ROULETTE_MAX_DURATION - ROULETTE_MIN_DURATION);
+  rouletteState.timeoutId = window.setTimeout(() => {
+    clearRouletteTimers();
+    rouletteState.spinning = false;
+    rouletteState.hasResult = true;
+    rouletteState.product = products[Math.floor(Math.random() * products.length)];
+    renderProducts();
+  }, duration);
+}
+
+function clearRouletteTimers() {
+  if (rouletteState.intervalId) window.clearInterval(rouletteState.intervalId);
+  if (rouletteState.timeoutId) window.clearTimeout(rouletteState.timeoutId);
+  rouletteState.intervalId = null;
+  rouletteState.timeoutId = null;
+  rouletteState.spinning = false;
+}
+
 function openQuickView(product) {
   if (!els.quickView) return;
 
@@ -450,6 +562,10 @@ function buildPromoProductMessage(product) {
   return `Hola, vi la promoci\u00f3n destacada de "${product.name}" (${formatPrice(product.price)}) y me interesa comprarla.`;
 }
 
+function buildRouletteMessage(product) {
+  return `Hola, jugu\u00e9 la ruleta de Sublimo y me sali\u00f3 "${product.name}" (${formatPrice(product.price)}). Quisiera saber si est\u00e1 disponible.`;
+}
+
 function getWhatsappUrl(message) {
   return `https://wa.me/${sanitizePhone(store.whatsapp)}?text=${encodeURIComponent(message)}`;
 }
@@ -483,9 +599,29 @@ function normalizeImageUrl(value) {
 }
 
 function toggleTheme() {
-  document.documentElement.classList.toggle("dark");
-  const theme = document.documentElement.classList.contains("dark") ? "dark" : "light";
-  localStorage.setItem(THEME_KEY, theme);
+  const current = document.documentElement.dataset.style || VISUAL_THEMES[0].id;
+  const currentIndex = VISUAL_THEMES.findIndex((theme) => theme.id === current);
+  const nextTheme = VISUAL_THEMES[(currentIndex + 1) % VISUAL_THEMES.length];
+  applyVisualTheme(nextTheme.id);
+  localStorage.setItem(THEME_KEY, nextTheme.id);
+}
+
+function getInitialVisualTheme() {
+  const stored = localStorage.getItem(THEME_KEY);
+  if (stored === "dark") return "urbano";
+  if (VISUAL_THEMES.some((theme) => theme.id === stored)) return stored;
+  return "urbano";
+}
+
+function applyVisualTheme(themeId) {
+  const theme = VISUAL_THEMES.find((item) => item.id === themeId) || VISUAL_THEMES[0];
+  document.documentElement.classList.remove("dark");
+  document.documentElement.dataset.style = theme.id;
+  if (els.themeLabel) els.themeLabel.textContent = theme.label;
+  if (els.themeToggle) {
+    els.themeToggle.setAttribute("aria-label", `Cambiar estilo visual. Actual: ${theme.label}`);
+    els.themeToggle.title = `Switch: ${theme.label}`;
+  }
 }
 
 function refreshIcons() {
@@ -517,7 +653,11 @@ const ICONS = {
   "chevron-right": '<svg viewBox="0 0 24 24" fill="none"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   "message-circle": '<svg viewBox="0 0 32 32" fill="none"><path d="M5.4 27 7 21.4A11.3 11.3 0 1 1 11 25l-5.6 2Z" fill="currentColor"/><path d="M10.8 9.8c.2-.5.5-.6.9-.6h.7c.3 0 .6.1.8.6l.9 2c.2.4.1.8-.2 1.1l-.7.8c.8 1.6 2.1 2.9 3.8 3.8l.8-.8c.3-.3.7-.4 1.1-.2l2 .9c.5.2.6.5.6.9v.6c0 .6-.2.9-.7 1.2-.8.5-2 .7-3.4.2-3.9-1.3-6.9-4.3-8.2-8.2-.5-1.4-.3-2.6.2-3.4Z" fill="var(--wa-mark, #fff)"/></svg>',
   "moon": '<svg viewBox="0 0 24 24" fill="none"><path d="M20 14.2A7.6 7.6 0 0 1 9.8 4a8.1 8.1 0 1 0 10.2 10.2Z" stroke="currentColor" stroke-linejoin="round"/></svg>',
+  "palette": '<svg viewBox="0 0 24 24" fill="none"><path d="M12 4a8 8 0 0 0-2.7 15.5c.8.3 1.4-.4 1.2-1.2-.2-.8.4-1.3 1.2-1.3h1.8A6.5 6.5 0 0 0 20 10.5C20 6.9 16.4 4 12 4Z" stroke="currentColor" stroke-linejoin="round"/><path d="M7.8 11.2h.1M10.2 8.2h.1M14.2 8.2h.1M16.4 11.2h.1" stroke="currentColor" stroke-linecap="round"/></svg>',
   "search": '<svg viewBox="0 0 24 24" fill="none"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor"/><path d="M15.5 15.5 20 20" stroke="currentColor" stroke-linecap="round"/></svg>',
+  "shuffle": '<svg viewBox="0 0 24 24" fill="none"><path d="M18 4h3v3M3 7h3.6c2 0 3 1 4.2 3.2l2.4 4.6C14.4 17 15.4 18 17.4 18H21" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 20h3v-3M3 18h3.6c1.6 0 2.6-.7 3.5-2.1M14.1 8.1C15 7.4 16 7 17.4 7H21" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  "sparkles": '<svg viewBox="0 0 24 24" fill="none"><path d="m12 3 1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3ZM18 14l.9 2.1L21 17l-2.1.9L18 20l-.9-2.1L15 17l2.1-.9L18 14ZM5 13l.8 1.8L8 15.5l-2.2.7L5 18l-.8-1.8-2.2-.7 2.2-.7L5 13Z" stroke="currentColor" stroke-linejoin="round"/></svg>',
+  "eye": '<svg viewBox="0 0 24 24" fill="none"><path d="M2.8 12s3.4-6 9.2-6 9.2 6 9.2 6-3.4 6-9.2 6-9.2-6-9.2-6Z" stroke="currentColor" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.6" stroke="currentColor"/></svg>',
   "x": '<svg viewBox="0 0 24 24" fill="none"><path d="M7 7l10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/></svg>'
 };
 

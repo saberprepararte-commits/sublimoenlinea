@@ -29,6 +29,51 @@
   --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
 }
 
+:root[data-style="urbano"] {
+  color-scheme: dark;
+  --bg: #101516;
+  --panel: #171d1f;
+  --panel-strong: #202729;
+  --text: #f7f1e8;
+  --muted: #c4b8a8;
+  --line: #30383b;
+  --accent: #24c6aa;
+  --accent-dark: #84ead8;
+  --terracotta: #ff865c;
+  --ink: #f7f1e8;
+  --shadow: 0 20px 54px rgba(0, 0, 0, 0.34);
+}
+
+:root[data-style="dulce"] {
+  color-scheme: light;
+  --bg: #fff5f7;
+  --panel: #fffafd;
+  --panel-strong: #ffffff;
+  --text: #2b2028;
+  --muted: #806b75;
+  --line: #ead4de;
+  --accent: #b7477a;
+  --accent-dark: #823052;
+  --terracotta: #d56d4d;
+  --ink: #2b2028;
+  --shadow: 0 18px 48px rgba(95, 47, 69, 0.14);
+}
+
+:root[data-style="minimal"] {
+  color-scheme: light;
+  --bg: #f4f5f4;
+  --panel: #ffffff;
+  --panel-strong: #fbfbfa;
+  --text: #171817;
+  --muted: #666b66;
+  --line: #d9ddd8;
+  --accent: #1d6f66;
+  --accent-dark: #134d48;
+  --terracotta: #99624b;
+  --ink: #171817;
+  --shadow: 0 16px 44px rgba(18, 22, 20, 0.11);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -145,6 +190,56 @@ img {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.style-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-strong);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.08);
+}
+
+.style-switch > [data-icon] {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 50%;
+  background:
+    conic-gradient(from 30deg, var(--accent), var(--terracotta), #e6c35c, var(--accent));
+  color: #fff;
+}
+
+.style-switch svg {
+  width: 17px;
+  height: 17px;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.18));
+}
+
+.style-switch small,
+.style-switch strong {
+  display: block;
+  text-align: left;
+  line-height: 1.05;
+}
+
+.style-switch small {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.style-switch strong {
+  margin-top: 2px;
+  font-size: 0.86rem;
 }
 
 .catalog-tools {
@@ -735,6 +830,170 @@ select {
   width: 25px;
   height: 25px;
   filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.08));
+}
+
+.roulette-card {
+  position: relative;
+  --prize-gold: #d6a43a;
+  --prize-gold-bright: #ffd36a;
+  --prize-gold-deep: #7a4f10;
+  --prize-ink: #241706;
+  border-color: color-mix(in srgb, var(--prize-gold) 78%, var(--line));
+  background:
+    radial-gradient(circle at 16% 8%, color-mix(in srgb, var(--prize-gold-bright) 34%, transparent), transparent 34%),
+    linear-gradient(145deg, color-mix(in srgb, #fff7df 18%, var(--panel)), var(--panel) 54%),
+    var(--panel);
+  box-shadow:
+    0 18px 58px rgba(168, 119, 27, 0.18),
+    inset 0 0 0 1px color-mix(in srgb, var(--prize-gold-bright) 28%, transparent);
+}
+
+.roulette-card::before {
+  position: absolute;
+  inset: 10px 10px auto auto;
+  z-index: 2;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background:
+    conic-gradient(from 0deg, #8b5d16, var(--prize-gold-bright), #fff4bd, var(--prize-gold), #8b5d16);
+  content: "";
+  opacity: 0.88;
+  filter: drop-shadow(0 8px 18px rgba(164, 108, 16, 0.35));
+  animation: rouletteSpin 4s linear infinite;
+}
+
+.roulette-card.is-spinning {
+  border-color: var(--prize-gold-bright);
+  box-shadow:
+    0 20px 70px rgba(214, 164, 58, 0.28),
+    0 0 0 1px color-mix(in srgb, var(--prize-gold-bright) 42%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--prize-gold-bright) 48%, transparent);
+}
+
+.roulette-card .badge {
+  background: linear-gradient(135deg, #fff7d8, #f2bf45);
+  color: var(--prize-ink);
+  box-shadow: 0 8px 18px rgba(109, 74, 17, 0.22);
+}
+
+.roulette-image img {
+  transition: filter 0.2s ease, transform 0.2s ease;
+}
+
+.roulette-card.is-spinning .roulette-image img {
+  filter: saturate(1.1) contrast(1.05);
+  transform: scale(1.02);
+}
+
+.roulette-orbit {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.roulette-orbit span {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.8);
+  opacity: 0;
+}
+
+.roulette-card.is-spinning .roulette-orbit span {
+  opacity: 1;
+  animation: rouletteFloat 0.78s ease-in-out infinite alternate;
+}
+
+.roulette-orbit span:nth-child(1) {
+  transform: translate(-52px, -42px);
+}
+
+.roulette-orbit span:nth-child(2) {
+  animation-delay: 0.14s;
+  transform: translate(56px, -18px);
+}
+
+.roulette-orbit span:nth-child(3) {
+  animation-delay: 0.28s;
+  transform: translate(22px, 62px);
+}
+
+.roulette-footer {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.roulette-card .price {
+  color: var(--prize-gold-bright);
+  text-shadow: 0 0 18px rgba(255, 211, 106, 0.24);
+}
+
+.roulette-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border: 0;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, #fff0a8, #d8a139 48%, #9a6618);
+  color: var(--prize-ink);
+  cursor: pointer;
+  font-weight: 900;
+  box-shadow:
+    0 14px 30px rgba(177, 119, 24, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.roulette-button:disabled {
+  cursor: wait;
+  opacity: 0.92;
+}
+
+.roulette-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.roulette-result {
+  display: grid;
+  grid-template-columns: 1fr 48px;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.roulette-result[hidden] {
+  display: none;
+}
+
+.roulette-detail {
+  min-height: 44px;
+  padding-inline: 12px;
+  border-color: color-mix(in srgb, var(--prize-gold) 42%, var(--line));
+  background: color-mix(in srgb, var(--prize-gold) 8%, var(--panel-strong));
+}
+
+.roulette-whatsapp {
+  min-width: 48px;
+  height: 44px;
+}
+
+@keyframes rouletteSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes rouletteFloat {
+  to {
+    margin-top: -12px;
+    opacity: 0.55;
+  }
 }
 
 .secondary-link [data-icon="message-circle"] {
@@ -1504,9 +1763,13 @@ svg {
     gap: 8px;
   }
 
-  .theme-toggle {
-    width: 44px;
+  .style-switch {
     min-width: 44px;
+    padding: 8px;
+  }
+
+  .style-switch > span:last-child {
+    display: none;
   }
 
   .hero {
@@ -1543,18 +1806,36 @@ svg {
     position: relative;
     inset: auto;
     z-index: 0;
+    height: clamp(500px, 130vw, 550px);
+    overflow: hidden;
     background: #f1f4f6;
   }
 
-  .hero-banner .hero-media picture,
-  .hero-banner .hero-media img {
-    height: auto;
+  .hero-banner .hero-media::before,
+  .hero-banner .hero-media::after {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    background-image: url("./hero-sublimo-mobile.png");
+    background-repeat: no-repeat;
+    background-size: 100% auto;
+    content: "";
   }
 
-  .hero-banner .hero-media img {
-    width: 100%;
-    object-fit: contain;
-    object-position: center top;
+  .hero-banner .hero-media::before {
+    top: 0;
+    height: 59%;
+    background-position: center top;
+  }
+
+  .hero-banner .hero-media::after {
+    bottom: 0;
+    height: 42%;
+    background-position: center bottom;
+  }
+
+  .hero-banner .hero-media picture {
+    display: none;
   }
 
   .hero-banner .hero-content {
