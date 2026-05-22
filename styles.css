@@ -1806,11 +1806,13 @@ svg {
     position: relative;
     inset: auto;
     z-index: 0;
-    height: clamp(360px, 98vw, 450px);
+    height: auto;
+    aspect-ratio: 855 / 830;
     overflow: hidden;
-    background-image: url("./hero-sublimo-mobile.png");
+    background-color: #f2f3f4;
+    background-image: url("./hero-sublimo-mobile-header.png");
     background-repeat: no-repeat;
-    background-size: 108% auto;
+    background-size: cover;
     background-position: center top;
   }
 
