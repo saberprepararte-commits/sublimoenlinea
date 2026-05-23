@@ -482,9 +482,14 @@ async function parseProductsFile(file) {
   if ((fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) && spreadsheet) {
     const buffer = await file.arrayBuffer();
     const workbook = spreadsheet.read(buffer, { type: "array" });
-    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = spreadsheet.utils.sheet_to_json(firstSheet, { header: 1, defval: "" });
-    return parseProductsRows(rows);
+    const attempts = workbook.SheetNames.map((sheetName) => {
+      const sheet = workbook.Sheets[sheetName];
+      const rows = spreadsheet.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+      return parseProductsRows(rows);
+    });
+    const validAttempt = attempts.find((attempt) => attempt.products.length);
+    if (validAttempt) return validAttempt;
+    return attempts[0] || { products: [], errors: ["El archivo no tiene hojas para leer."] };
   }
 
   const text = await file.text();
@@ -506,7 +511,7 @@ function parseProductsRows(rows) {
   const errors = [];
   if (rows.length < 2) return { products: [], errors: ["El archivo no tiene filas de productos."] };
 
-  const headerInfo = findHeaderRow(rows);
+  const headerInfo = findHeaderRow(rows) || inferTemplateColumns(rows);
   if (!headerInfo) {
     return {
       products: [],
@@ -565,6 +570,16 @@ function findHeaderRow(rows) {
   }
 
   return null;
+}
+
+function inferTemplateColumns(rows) {
+  const firstDataRow = rows.find((row) => row.some((cell) => String(cell).trim()));
+  if (!firstDataRow || firstDataRow.length < 6) return null;
+
+  return {
+    headers: ["name", "category", "price", "status", "image", "description", "featured"],
+    headerIndex: -1
+  };
 }
 
 function parseCsvRows(text) {
