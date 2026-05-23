@@ -506,10 +506,18 @@ function parseProductsRows(rows) {
   const errors = [];
   if (rows.length < 2) return { products: [], errors: ["El archivo no tiene filas de productos."] };
 
-  const headers = rows[0].map(normalizeHeader);
+  const headerInfo = findHeaderRow(rows);
+  if (!headerInfo) {
+    return {
+      products: [],
+      errors: ["No encontré los encabezados. Usa columnas: producto, categoria, precio, estado, imagen, detalle, destacado."]
+    };
+  }
+
+  const { headers, headerIndex } = headerInfo;
   const products = [];
 
-  rows.slice(1).forEach((row, index) => {
+  rows.slice(headerIndex + 1).forEach((row, index) => {
     if (row.every((cell) => !String(cell).trim())) return;
 
     const item = {};
@@ -517,7 +525,7 @@ function parseProductsRows(rows) {
       if (header) item[header] = String(row[columnIndex] || "").trim();
     });
 
-    const rowNumber = index + 2;
+    const rowNumber = headerIndex + index + 2;
     const missing = [];
     if (!item.name) missing.push("producto");
     if (!item.category) missing.push("categoria");
@@ -543,6 +551,20 @@ function parseProductsRows(rows) {
   });
 
   return { products, errors };
+}
+
+function findHeaderRow(rows) {
+  const requiredHeaders = ["name", "category", "price", "image", "description"];
+  const maxRowsToScan = Math.min(rows.length, 12);
+
+  for (let rowIndex = 0; rowIndex < maxRowsToScan; rowIndex++) {
+    const headers = rows[rowIndex].map(normalizeHeader);
+    const headerSet = new Set(headers.filter(Boolean));
+    const score = requiredHeaders.filter((header) => headerSet.has(header)).length;
+    if (score >= 4) return { headers, headerIndex: rowIndex };
+  }
+
+  return null;
 }
 
 function parseCsvRows(text) {
