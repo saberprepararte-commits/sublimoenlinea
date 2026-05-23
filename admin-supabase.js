@@ -82,9 +82,9 @@ function bindEvents() {
   els.settingsForm.addEventListener("submit", handleSettingsSubmit);
   els.productForm.addEventListener("submit", handleProductSubmit);
   els.resetFormButton.addEventListener("click", resetProductForm);
-  els.downloadCsvTemplate.addEventListener("click", downloadCsvTemplate);
-  els.csvFileInput.addEventListener("change", handleCsvFile);
-  els.importCsvButton.addEventListener("click", importCsvProducts);
+  els.downloadCsvTemplate?.addEventListener("click", downloadCsvTemplate);
+  els.csvFileInput?.addEventListener("change", handleCsvFile);
+  els.importCsvButton?.addEventListener("click", importCsvProducts);
   els.adminProductSearch.addEventListener("input", handleAdminFilterChange);
   els.adminCategoryFilter.addEventListener("change", handleAdminFilterChange);
   els.adminStatusFilter.addEventListener("change", handleAdminFilterChange);

@@ -144,39 +144,6 @@
               </button>
             </form>
 
-            <section class="settings-form csv-import-panel" aria-label="Carga masiva por Excel">
-              <h2>Carga masiva Excel</h2>
-              <p class="helper-text">Descarga la plantilla, llena tus productos en Excel y luego importa el archivo para cargarlos en bloque.</p>
-              <div class="csv-actions">
-                <button class="ghost-button" id="downloadCsvTemplate" type="button">
-                  <span data-icon="download"></span>
-                  Descargar plantilla Excel
-                </button>
-                <label class="ghost-button csv-file-trigger" for="csvFileInput">
-                  <span data-icon="upload"></span>
-                  Seleccionar Excel
-                </label>
-                <input id="csvFileInput" type="file" accept=".xlsx,.xls,.csv,text/csv" hidden />
-                <button class="primary-button" id="importCsvButton" type="button" disabled>
-                  <span data-icon="save"></span>
-                  Importar productos
-                </button>
-              </div>
-              <p class="csv-summary" id="csvSummary">Sin archivo seleccionado.</p>
-              <div class="csv-preview" id="csvPreview" hidden>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Producto</th>
-                      <th>Categor&iacute;a</th>
-                      <th>Precio</th>
-                      <th>Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody id="csvPreviewRows"></tbody>
-                </table>
-              </div>
-            </section>
             </div>
 
             <div class="admin-right-column">
@@ -256,7 +223,6 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="vendor/xlsx.full.min.js"></script>
     <script src="supabase-config.js"></script>
     <script src="admin-supabase.js"></script>
   </body>
