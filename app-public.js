@@ -4,6 +4,7 @@ const PROMO_DISMISS_KEY = "sublimo-promo-dismissed";
 const PAGE_SIZE = 24;
 const ROULETTE_MIN_DURATION = 3000;
 const ROULETTE_MAX_DURATION = 5000;
+const PRODUCT_SHUFFLE_INTERVAL = 8 * 60 * 60 * 1000;
 const VISUAL_THEMES = [
   { id: "urbano", label: "Urbano" },
   { id: "dulce", label: "Dulce" },
@@ -65,6 +66,8 @@ const starterProducts = [
 
 let store = loadStore();
 let visibleProductCount = PAGE_SIZE;
+let productShuffleSeed = Date.now();
+let productShuffleTimerId = null;
 let rouletteState = {
   product: null,
   hasResult: false,
@@ -138,6 +141,7 @@ async function init() {
   renderCategories();
   renderProducts();
   bindEvents();
+  startProductShuffle();
   refreshIcons();
 }
 
@@ -363,7 +367,7 @@ function syncCategoryChips() {
 function renderProducts() {
   const term = els.searchInput.value.trim().toLowerCase();
   const category = els.categoryFilter.value;
-  const products = sortProducts(store.products.filter((product) => {
+  const sortedProducts = sortProducts(store.products.filter((product) => {
     const matchesText = [product.name, product.category, product.description, product.price]
       .join(" ")
       .toLowerCase()
@@ -371,6 +375,7 @@ function renderProducts() {
     const matchesCategory = category === "all" || product.category === category;
     return matchesText && matchesCategory;
   }));
+  const products = shouldAutoShuffleProducts() ? shuffleProducts(sortedProducts, productShuffleSeed) : sortedProducts;
 
   els.productGrid.innerHTML = "";
   els.emptyState.hidden = products.length > 0;
@@ -432,7 +437,7 @@ function renderProducts() {
 }
 
 function createRouletteCard(products) {
-  const poolKey = products.map((product) => product.id || product.name).join("|");
+  const poolKey = products.map((product) => product.id || product.name).sort().join("|");
   if (rouletteState.poolKey !== poolKey) {
     rouletteState.poolKey = poolKey;
     rouletteState.product = products[0];
@@ -518,6 +523,33 @@ function clearRouletteTimers() {
   rouletteState.intervalId = null;
   rouletteState.timeoutId = null;
   rouletteState.spinning = false;
+}
+
+function startProductShuffle() {
+  if (productShuffleTimerId) window.clearInterval(productShuffleTimerId);
+  productShuffleTimerId = window.setInterval(() => {
+    if (document.hidden || rouletteState.spinning || store.products.length < 3) return;
+    productShuffleSeed = Date.now();
+    renderProducts();
+  }, PRODUCT_SHUFFLE_INTERVAL);
+}
+
+function shuffleProducts(products, seed) {
+  const shuffled = [...products];
+  let state = Math.abs(Math.floor(seed)) || 1;
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    state = (state * 1664525 + 1013904223) % 4294967296;
+    const swapIndex = state % (index + 1);
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+
+  return shuffled;
+}
+
+function shouldAutoShuffleProducts() {
+  const sortValue = els.sortFilter?.value || "recent";
+  return sortValue === "recent" || sortValue === "featured";
 }
 
 function openQuickView(product) {
