@@ -587,15 +587,43 @@ function sortProducts(products) {
 }
 
 function buildProductMessage(product) {
-  return `Hola, me interesa el producto "${product.name}" (${formatPrice(product.price)}). Quisiera saber si est\u00e1 disponible.`;
+  return buildProductInquiryMessage(
+    product,
+    `Hola, me interesa este producto de ${store.name}:`
+  );
 }
 
 function buildPromoProductMessage(product) {
-  return `Hola, vi la promoci\u00f3n destacada de "${product.name}" (${formatPrice(product.price)}) y me interesa comprarla.`;
+  return buildProductInquiryMessage(
+    product,
+    "Hola, vi esta camiseta en la promoci\u00f3n destacada y me interesa comprarla:"
+  );
 }
 
 function buildRouletteMessage(product) {
-  return `Hola, jugu\u00e9 la ruleta de Sublimo y me sali\u00f3 "${product.name}" (${formatPrice(product.price)}). Quisiera saber si est\u00e1 disponible.`;
+  return buildProductInquiryMessage(
+    product,
+    "Hola, jugu\u00e9 la ruleta de Sublimo y me sali\u00f3 esta camiseta:"
+  );
+}
+
+function buildProductInquiryMessage(product, intro) {
+  const lines = [
+    intro,
+    "",
+    `Producto: ${product.name}`,
+    `Precio: ${formatPrice(product.price)}`,
+    `Categor\u00eda: ${product.category}`,
+    `Estado: ${product.status}`
+  ];
+
+  const imageUrl = normalizeImageUrl(product.image);
+  if (imageUrl) {
+    lines.push(`Imagen: ${imageUrl}`);
+  }
+
+  lines.push("", "Quisiera saber si est\u00e1 disponible.");
+  return lines.join("\n");
 }
 
 function getWhatsappUrl(message) {
