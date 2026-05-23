@@ -34,6 +34,8 @@ const els = {
   csvSummary: document.querySelector("#csvSummary"),
   csvPreview: document.querySelector("#csvPreview"),
   csvPreviewRows: document.querySelector("#csvPreviewRows"),
+  bulkPasteInput: document.querySelector("#bulkPasteInput"),
+  parseBulkPasteButton: document.querySelector("#parseBulkPasteButton"),
   adminProductSearch: document.querySelector("#adminProductSearch"),
   adminCategoryFilter: document.querySelector("#adminCategoryFilter"),
   adminStatusFilter: document.querySelector("#adminStatusFilter"),
@@ -85,6 +87,7 @@ function bindEvents() {
   els.downloadCsvTemplate?.addEventListener("click", downloadCsvTemplate);
   els.csvFileInput?.addEventListener("change", handleCsvFile);
   els.importCsvButton?.addEventListener("click", importCsvProducts);
+  els.parseBulkPasteButton?.addEventListener("click", handleBulkPaste);
   els.adminProductSearch.addEventListener("input", handleAdminFilterChange);
   els.adminCategoryFilter.addEventListener("change", handleAdminFilterChange);
   els.adminStatusFilter.addEventListener("change", handleAdminFilterChange);
@@ -424,10 +427,7 @@ function downloadCsvTemplate() {
 
 async function handleCsvFile(event) {
   const file = event.target.files?.[0];
-  pendingCsvProducts = [];
-  els.importCsvButton.disabled = true;
-  els.csvPreview.hidden = true;
-  els.csvPreviewRows.innerHTML = "";
+  resetBulkImportState();
 
   if (!file) {
     els.csvSummary.textContent = "Sin archivo seleccionado.";
@@ -452,6 +452,35 @@ async function handleCsvFile(event) {
   }
 }
 
+function handleBulkPaste() {
+  resetBulkImportState();
+  const text = els.bulkPasteInput?.value || "";
+
+  if (!text.trim()) {
+    els.csvSummary.textContent = "Pega primero las filas copiadas desde Excel.";
+    return;
+  }
+
+  const { products: parsedProducts, errors } = parseProductsText(text);
+  pendingCsvProducts = parsedProducts;
+  renderCsvPreview(parsedProducts);
+
+  if (errors.length) {
+    els.csvSummary.textContent = `${parsedProducts.length} productos listos. ${errors.length} filas con error: ${errors.slice(0, 3).join(" | ")}`;
+  } else {
+    els.csvSummary.textContent = `${parsedProducts.length} productos listos para importar.`;
+  }
+
+  els.importCsvButton.disabled = parsedProducts.length === 0;
+}
+
+function resetBulkImportState() {
+  pendingCsvProducts = [];
+  if (els.importCsvButton) els.importCsvButton.disabled = true;
+  if (els.csvPreview) els.csvPreview.hidden = true;
+  if (els.csvPreviewRows) els.csvPreviewRows.innerHTML = "";
+}
+
 async function importCsvProducts() {
   if (!pendingCsvProducts.length) return;
 
@@ -469,8 +498,9 @@ async function importCsvProducts() {
 
   const importedCount = pendingCsvProducts.length;
   pendingCsvProducts = [];
-  els.csvFileInput.value = "";
-  els.csvPreview.hidden = true;
+  if (els.csvFileInput) els.csvFileInput.value = "";
+  if (els.bulkPasteInput) els.bulkPasteInput.value = "";
+  if (els.csvPreview) els.csvPreview.hidden = true;
   els.csvSummary.textContent = `${importedCount} productos importados correctamente.`;
   await loadProducts();
   showToast("Productos importados.");
@@ -501,7 +531,7 @@ async function parseProductsFile(file) {
   }
 
   const text = await file.text();
-  return parseProductsCsv(text);
+  return parseProductsText(text);
 }
 
 function getSpreadsheetApi() {
@@ -510,9 +540,13 @@ function getSpreadsheetApi() {
   return null;
 }
 
-function parseProductsCsv(text) {
-  const rows = parseCsvRows(text);
+function parseProductsText(text) {
+  const rows = parseDelimitedRows(text);
   return parseProductsRows(rows);
+}
+
+function parseProductsCsv(text) {
+  return parseProductsText(text);
 }
 
 function parseProductsRows(rows) {
@@ -628,6 +662,19 @@ function parseCsvRows(text) {
   return rows;
 }
 
+function parseDelimitedRows(text) {
+  const cleanText = text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const firstLine = cleanText.split("\n")[0] || "";
+  if (firstLine.includes("\t")) {
+    return cleanText
+      .split("\n")
+      .map((line) => line.split("\t").map((cell) => cell.trim()))
+      .filter((row) => row.some((cell) => cell));
+  }
+
+  return parseCsvRows(cleanText);
+}
+
 function detectDelimiter(text) {
   const firstLine = text.split(/\r?\n/)[0] || "";
   const commaCount = (firstLine.match(/,/g) || []).length;
@@ -674,6 +721,7 @@ function parseBoolean(value) {
 }
 
 function renderCsvPreview(items) {
+  if (!els.csvPreviewRows || !els.csvPreview) return;
   els.csvPreviewRows.innerHTML = "";
   items.slice(0, 5).forEach((item) => {
     const row = document.createElement("tr");

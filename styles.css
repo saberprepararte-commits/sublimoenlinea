@@ -1357,6 +1357,20 @@ select:focus {
   min-height: 42px;
 }
 
+.bulk-paste-label {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 10px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.bulk-paste-label textarea {
+  min-height: 118px;
+  resize: vertical;
+  font-family: inherit;
+}
+
 .csv-preview {
   overflow-x: auto;
   border: 1px solid var(--line);
