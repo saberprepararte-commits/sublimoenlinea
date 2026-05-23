@@ -479,7 +479,15 @@ async function importCsvProducts() {
 async function parseProductsFile(file) {
   const fileName = file.name.toLowerCase();
   const spreadsheet = getSpreadsheetApi();
-  if ((fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) && spreadsheet) {
+  const isExcel = fileName.endsWith(".xlsx") || fileName.endsWith(".xls");
+  if (isExcel && !spreadsheet) {
+    return {
+      products: [],
+      errors: ["No se cargó el lector de Excel. Sube también la carpeta vendor o revisa tu conexión para usar el respaldo en línea."]
+    };
+  }
+
+  if (isExcel && spreadsheet) {
     const buffer = await file.arrayBuffer();
     const workbook = spreadsheet.read(buffer, { type: "array" });
     const attempts = workbook.SheetNames.map((sheetName) => {
