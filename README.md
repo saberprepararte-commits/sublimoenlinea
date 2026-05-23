@@ -1,31 +1,42 @@
 # Sublimo Shop
 
-Version para publicar en GitHub Pages con panel protegido por Supabase.
+Plantilla web estática para una tienda tipo galería. Permite mostrar productos, filtrar por categoría, buscar productos y enviar consultas por WhatsApp con un mensaje específico por producto.
 
-## Que incluye
+## Archivos principales
 
-- Catalogo publico de productos.
-- Busqueda y filtro por categoria.
-- Botones de WhatsApp por producto.
-- Logo y banners responsive.
-- Modo claro/oscuro.
-- Panel de administracion con login de Supabase.
+- `index.html`: página pública de la tienda.
+- `admin.html`: panel privado de administración.
+- `styles.css`: estilos visuales y responsive.
+- `app.js`: productos, filtros, WhatsApp, login y administración.
+- `sublimo-logo.png`: logo principal usado en el encabezado.
+- `hero-sublimo.png`: banner principal.
+- `hero-sublimo-mobile.png`: banner optimizado para celulares.
+- `assets/`: copia de respaldo de imágenes.
 
-## Archivos
+## Cómo usar
 
-- `index.html`: pagina publica.
-- `admin.html`: panel de administracion.
-- `styles.css`: estilos responsive.
-- `app-public.js`: logica de la tienda publica.
-- `admin-supabase.js`: logica del panel privado.
-- `supabase-config.js`: configuracion publica de Supabase.
-- `supabase-setup.sql`: tablas, datos iniciales y reglas de seguridad.
-- `sublimo-logo.png`: logo.
-- `hero-sublimo.png`: banner de escritorio.
-- `hero-sublimo-mobile.png`: banner para celular.
+Abre `index.html` en el navegador para ver la tienda.
 
-## Seguridad
+Para administrar productos, entra a:
 
-Esta version no guarda contrasenas en el codigo. El panel usa Supabase Auth y reglas RLS en la base de datos.
+```text
+admin.html
+```
 
-Cualquiera puede abrir `admin.html`, pero solo el usuario autorizado en Supabase puede crear, editar o eliminar productos.
+Clave inicial:
+
+```text
+admin123
+```
+
+## Importante
+
+Esta plantilla usa `localStorage`, por lo que los productos se guardan en el navegador donde se editen. Para una tienda publicada con usuarios reales, conviene conectar el panel a un backend o base de datos con autenticación real.
+
+## Publicar en GitHub Pages
+
+1. Crea un repositorio en GitHub.
+2. Sube todos los archivos de esta carpeta.
+3. En GitHub, ve a `Settings > Pages`.
+4. En `Build and deployment`, selecciona la rama principal y la carpeta raíz.
+5. Guarda los cambios y espera a que GitHub genere la URL pública.
