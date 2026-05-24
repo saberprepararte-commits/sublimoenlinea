@@ -972,22 +972,18 @@ function buildProductInquiryMessage(product, intro, options = {}) {
   const lines = [
     intro,
     "",
-    `Producto: ${product.name}`,
-    `Precio: ${formatPrice(product.price)}`,
-    `Categor\u00eda: ${product.category}`,
-    `Estado: ${product.status}`,
-    "Tallas: niños y niñas 2-4, 6-8, 10-12, 14-16 | adultos S, M, L, XL",
-    `Colores: ${PRODUCT_COLORS.join(", ")}`,
-    `Tela: ${PRODUCT_FABRIC}`
+    `Producto: ${product.name}`
   ];
-
-  const sizeLineIndex = lines.findIndex((line) => line.startsWith("Tallas:"));
-  if (sizeLineIndex >= 0) {
-    lines[sizeLineIndex] = "Tallas disponibles: ni\u00f1os y ni\u00f1as 2-4, 6-8, 10-12, 14-16 | adultos S, M, L, XL";
-  }
 
   if (options.size) lines.push(`Talla elegida: ${options.size}`);
   if (options.color) lines.push(`Color elegido: ${options.color}`);
+
+  lines.push(
+    `Precio: ${formatPrice(product.price)}`,
+    `Categor\u00eda: ${product.category}`,
+    `Estado: ${product.status}`,
+    `Tela: ${PRODUCT_FABRIC}`
+  );
 
   const imageUrl = normalizeImageUrl(product.image);
   if (imageUrl) {
