@@ -157,6 +157,31 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+    <div class="reaction-prompt" id="reactionPrompt" hidden>
+      <div class="reaction-backdrop" data-reaction-close></div>
+      <section class="reaction-card" role="dialog" aria-modal="true" aria-labelledby="reactionTitle">
+        <button class="reaction-close" type="button" aria-label="Cerrar" data-reaction-close>
+          <span data-icon="x"></span>
+        </button>
+        <p class="eyebrow">Tu opini&oacute;n cuenta</p>
+        <h2 id="reactionTitle">¿Qu&eacute; te parece Sublimo Shop?</h2>
+        <p>Ay&uacute;danos con una reacci&oacute;n r&aacute;pida para seguir mejorando tu experiencia.</p>
+        <div class="reaction-actions">
+          <button class="reaction-option" type="button" data-reaction="like">
+            <span data-icon="thumbs-up"></span>
+            Me gusta
+          </button>
+          <button class="reaction-option reaction-love" type="button" data-reaction="love">
+            <span data-icon="heart"></span>
+            Me encanta
+          </button>
+          <button class="reaction-later" type="button" data-reaction="later">A&uacute;n no</button>
+        </div>
+        <p class="reaction-feedback" id="reactionFeedback" aria-live="polite"></p>
+        <p class="reaction-stats" id="reactionStats"></p>
+      </section>
+    </div>
+
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
     <script src="app-public.js"></script>

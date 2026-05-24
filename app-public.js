@@ -1,6 +1,10 @@
 const STORAGE_KEY = "gallery-store-template-v1";
 const THEME_KEY = "gallery-store-theme";
 const PROMO_DISMISS_KEY = "sublimo-promo-dismissed";
+const REACTION_KEY = "sublimo-reaction-v1";
+const REACTION_COUNTS_KEY = "sublimo-reaction-counts-v1";
+const REACTION_PROMPT_DELAY = 10000;
+const REACTION_LATER_DELAY = 24 * 60 * 60 * 1000;
 const PAGE_SIZE = 24;
 const ROULETTE_MIN_DURATION = 3000;
 const ROULETTE_MAX_DURATION = 5000;
@@ -105,7 +109,10 @@ const els = {
   quickViewPrice: document.querySelector("#quickViewPrice"),
   quickViewWhatsapp: document.querySelector("#quickViewWhatsapp"),
   themeToggle: document.querySelector("#themeToggle"),
-  themeLabel: document.querySelector("#themeLabel")
+  themeLabel: document.querySelector("#themeLabel"),
+  reactionPrompt: document.querySelector("#reactionPrompt"),
+  reactionFeedback: document.querySelector("#reactionFeedback"),
+  reactionStats: document.querySelector("#reactionStats")
 };
 
 function loadStore() {
@@ -142,6 +149,7 @@ async function init() {
   renderProducts();
   bindEvents();
   startProductShuffle();
+  scheduleReactionPrompt();
   refreshIcons();
 }
 
@@ -233,6 +241,12 @@ function bindEvents() {
   els.themeToggle?.addEventListener("click", toggleTheme);
   els.heroWhatsapp?.addEventListener("click", () => {
     window.open(getWhatsappUrl(`Hola, deseo recibir informaci\u00f3n de ${store.name}.`), "_blank");
+  });
+  document.querySelectorAll("[data-reaction]").forEach((button) => {
+    button.addEventListener("click", () => handleReaction(button.dataset.reaction));
+  });
+  document.querySelectorAll("[data-reaction-close]").forEach((control) => {
+    control.addEventListener("click", closeReactionPrompt);
   });
 }
 
@@ -575,6 +589,86 @@ function closeQuickView() {
   document.body.classList.remove("quick-view-open");
 }
 
+function scheduleReactionPrompt() {
+  if (!els.reactionPrompt || !shouldShowReactionPrompt()) return;
+  window.setTimeout(() => {
+    if (shouldShowReactionPrompt()) openReactionPrompt();
+  }, REACTION_PROMPT_DELAY);
+}
+
+function shouldShowReactionPrompt() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(REACTION_KEY));
+    if (!saved) return true;
+    if (saved.reaction === "later") return Date.now() >= Number(saved.nextPromptAt || 0);
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+function openReactionPrompt() {
+  els.reactionPrompt.hidden = false;
+  document.body.classList.add("reaction-open");
+  updateReactionStats();
+  refreshIcons();
+}
+
+function closeReactionPrompt() {
+  if (!els.reactionPrompt || els.reactionPrompt.hidden) return;
+  els.reactionPrompt.hidden = true;
+  document.body.classList.remove("reaction-open");
+}
+
+function handleReaction(reaction) {
+  if (!reaction) return;
+
+  if (reaction === "later") {
+    localStorage.setItem(REACTION_KEY, JSON.stringify({
+      reaction: "later",
+      nextPromptAt: Date.now() + REACTION_LATER_DELAY
+    }));
+    showReactionFeedback("Esperamos que disfrutes la experiencia. Te volveremos a preguntar m\u00e1s adelante.");
+    window.setTimeout(closeReactionPrompt, 2200);
+    return;
+  }
+
+  const counts = getReactionCounts();
+  counts[reaction] = (counts[reaction] || 0) + 1;
+  localStorage.setItem(REACTION_COUNTS_KEY, JSON.stringify(counts));
+  localStorage.setItem(REACTION_KEY, JSON.stringify({ reaction, createdAt: Date.now() }));
+
+  const message = reaction === "love"
+    ? "Nos encanta que te encante. Gracias por apoyar a Sublimo."
+    : "Gracias por tu apoyo. Tu reacci\u00f3n nos ayuda a mejorar.";
+  showReactionFeedback(message, true);
+  updateReactionStats();
+  window.setTimeout(closeReactionPrompt, 2600);
+}
+
+function showReactionFeedback(message, celebrate = false) {
+  if (!els.reactionFeedback) return;
+  els.reactionFeedback.textContent = message;
+  els.reactionFeedback.classList.toggle("is-celebrating", celebrate);
+}
+
+function updateReactionStats() {
+  if (!els.reactionStats) return;
+  const counts = getReactionCounts();
+  const total = (counts.like || 0) + (counts.love || 0);
+  els.reactionStats.textContent = total
+    ? `${total} reacciones guardadas en esta prueba local.`
+    : "Versi\u00f3n local: aqu\u00ed veremos el contador antes de conectarlo a Supabase.";
+}
+
+function getReactionCounts() {
+  try {
+    return { like: 0, love: 0, ...JSON.parse(localStorage.getItem(REACTION_COUNTS_KEY)) };
+  } catch {
+    return { like: 0, love: 0 };
+  }
+}
+
 function sortProducts(products) {
   const sortValue = els.sortFilter?.value || "recent";
   return [...products].sort((a, b) => {
@@ -718,6 +812,8 @@ const ICONS = {
   "shuffle": '<svg viewBox="0 0 24 24" fill="none"><path d="M18 4h3v3M3 7h3.6c2 0 3 1 4.2 3.2l2.4 4.6C14.4 17 15.4 18 17.4 18H21" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 20h3v-3M3 18h3.6c1.6 0 2.6-.7 3.5-2.1M14.1 8.1C15 7.4 16 7 17.4 7H21" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   "sparkles": '<svg viewBox="0 0 24 24" fill="none"><path d="m12 3 1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3ZM18 14l.9 2.1L21 17l-2.1.9L18 20l-.9-2.1L15 17l2.1-.9L18 14ZM5 13l.8 1.8L8 15.5l-2.2.7L5 18l-.8-1.8-2.2-.7 2.2-.7L5 13Z" stroke="currentColor" stroke-linejoin="round"/></svg>',
   "eye": '<svg viewBox="0 0 24 24" fill="none"><path d="M2.8 12s3.4-6 9.2-6 9.2 6 9.2 6-3.4 6-9.2 6-9.2-6-9.2-6Z" stroke="currentColor" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.6" stroke="currentColor"/></svg>',
+  "heart": '<svg viewBox="0 0 24 24" fill="none"><path d="M12 20s-7-4.2-9.2-9A4.7 4.7 0 0 1 11 6.4l1 1 1-1A4.7 4.7 0 0 1 21.2 11C19 15.8 12 20 12 20Z" stroke="currentColor" stroke-linejoin="round"/></svg>',
+  "thumbs-up": '<svg viewBox="0 0 24 24" fill="none"><path d="M7 10v10H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3Zm0 0 4.2-6.4c.8-1.2 2.7-.6 2.7.9V9h4.2a2 2 0 0 1 1.9 2.5l-1.5 6A3.3 3.3 0 0 1 15.3 20H7V10Z" stroke="currentColor" stroke-linejoin="round"/></svg>',
   "x": '<svg viewBox="0 0 24 24" fill="none"><path d="M7 7l10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/></svg>'
 };
 
