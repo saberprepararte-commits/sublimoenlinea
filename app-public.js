@@ -11,6 +11,12 @@ const PAGE_SIZE = 24;
 const ROULETTE_MIN_DURATION = 3000;
 const ROULETTE_MAX_DURATION = 5000;
 const PRODUCT_SHUFFLE_INTERVAL = 8 * 60 * 60 * 1000;
+const PRODUCT_SIZE_GROUPS = [
+  { label: "Niños y niñas", values: ["2-4", "6-8", "10-12", "14-16"] },
+  { label: "Adultos", values: ["S", "M", "L", "XL"] }
+];
+const PRODUCT_COLORS = ["Negro", "Blanco", "Rojo", "Verde", "Azul", "Amarillo", "Rosado", "Mostaza", "Otro"];
+const PRODUCT_FABRIC = "Algodón 94% y elastano 6%";
 const VISUAL_THEMES = [
   { id: "urbano", label: "Urbano" },
   { id: "dulce", label: "Dulce" },
@@ -113,6 +119,9 @@ const els = {
   quickViewTitle: document.querySelector("#quickViewTitle"),
   quickViewDescription: document.querySelector("#quickViewDescription"),
   quickViewPrice: document.querySelector("#quickViewPrice"),
+  quickViewSizes: document.querySelector("#quickViewSizes"),
+  quickViewColors: document.querySelector("#quickViewColors"),
+  quickViewFabric: document.querySelector("#quickViewFabric"),
   quickViewWhatsapp: document.querySelector("#quickViewWhatsapp"),
   quickViewFavorite: document.querySelector("#quickViewFavorite"),
   favoritesToggle: document.querySelector("#favoritesToggle"),
@@ -601,6 +610,7 @@ function openQuickView(product) {
   els.quickViewTitle.textContent = product.name;
   els.quickViewDescription.textContent = product.description;
   els.quickViewPrice.textContent = formatPrice(product.price);
+  renderQuickViewDetails();
   els.quickViewWhatsapp.href = getWhatsappUrl(buildProductMessage(product));
   updateQuickViewFavoriteButton(product);
   els.quickView.hidden = false;
@@ -684,6 +694,43 @@ function updateQuickViewFavoriteButton(product) {
     <span data-icon="heart"></span>
     ${saved ? "Guardado en favoritos" : "Guardar en favoritos"}
   `;
+}
+
+function renderQuickViewDetails() {
+  if (els.quickViewSizes) {
+    els.quickViewSizes.innerHTML = PRODUCT_SIZE_GROUPS.map((group) => `
+      <span class="detail-group-label">${escapeHtml(group.label)}</span>
+      ${group.values.map((size) => `<span class="detail-chip">${escapeHtml(size)}</span>`).join("")}
+    `).join("");
+  }
+
+  if (els.quickViewColors) {
+    els.quickViewColors.innerHTML = PRODUCT_COLORS.map((color) => `
+      <span class="detail-chip color-chip" style="--swatch:${getColorSwatch(color)}">
+        <span aria-hidden="true"></span>
+        ${escapeHtml(color)}
+      </span>
+    `).join("");
+  }
+
+  if (els.quickViewFabric) {
+    els.quickViewFabric.textContent = PRODUCT_FABRIC;
+  }
+}
+
+function getColorSwatch(color) {
+  const swatches = {
+    Negro: "#111111",
+    Blanco: "#ffffff",
+    Rojo: "#d83a32",
+    Verde: "#2f8f58",
+    Azul: "#2563eb",
+    Amarillo: "#f7c948",
+    Rosado: "#f5a6c8",
+    Mostaza: "#c8961f",
+    Otro: "linear-gradient(135deg, #111 0 25%, #fff 25% 50%, #2f8f58 50% 75%, #f5a6c8 75% 100%)"
+  };
+  return swatches[color] || "#dddddd";
 }
 
 function showToast(message) {
@@ -891,7 +938,10 @@ function buildProductInquiryMessage(product, intro) {
     `Producto: ${product.name}`,
     `Precio: ${formatPrice(product.price)}`,
     `Categor\u00eda: ${product.category}`,
-    `Estado: ${product.status}`
+    `Estado: ${product.status}`,
+    "Tallas: niños y niñas 2-4, 6-8, 10-12, 14-16 | adultos S, M, L, XL",
+    `Colores: ${PRODUCT_COLORS.join(", ")}`,
+    `Tela: ${PRODUCT_FABRIC}`
   ];
 
   const imageUrl = normalizeImageUrl(product.image);
