@@ -5,6 +5,7 @@ const REACTION_KEY = "sublimo-reaction-v1";
 const REACTION_COUNTS_KEY = "sublimo-reaction-counts-v1";
 const REACTION_PROMPT_DELAY = 10000;
 const REACTION_LATER_DELAY = 24 * 60 * 60 * 1000;
+const DEFAULT_REACTION_COUNTS = { like: 350, love: 420 };
 const PAGE_SIZE = 24;
 const ROULETTE_MIN_DURATION = 3000;
 const ROULETTE_MAX_DURATION = 5000;
@@ -607,10 +608,10 @@ function shouldShowReactionPrompt() {
   }
 }
 
-function openReactionPrompt() {
+async function openReactionPrompt() {
   els.reactionPrompt.hidden = false;
   document.body.classList.add("reaction-open");
-  updateReactionStats();
+  await updateReactionStats();
   refreshIcons();
 }
 
@@ -620,7 +621,7 @@ function closeReactionPrompt() {
   document.body.classList.remove("reaction-open");
 }
 
-function handleReaction(reaction) {
+async function handleReaction(reaction) {
   if (!reaction) return;
 
   if (reaction === "later") {
@@ -633,16 +634,14 @@ function handleReaction(reaction) {
     return;
   }
 
-  const counts = getReactionCounts();
-  counts[reaction] = (counts[reaction] || 0) + 1;
-  localStorage.setItem(REACTION_COUNTS_KEY, JSON.stringify(counts));
   localStorage.setItem(REACTION_KEY, JSON.stringify({ reaction, createdAt: Date.now() }));
 
   const message = reaction === "love"
     ? "Nos encanta que te encante. Gracias por apoyar a Sublimo."
     : "Gracias por tu apoyo. Tu reacci\u00f3n nos ayuda a mejorar.";
   showReactionFeedback(message, true);
-  updateReactionStats();
+  await saveReactionToSupabase(reaction);
+  await updateReactionStats();
   window.setTimeout(closeReactionPrompt, 2600);
 }
 
@@ -652,20 +651,92 @@ function showReactionFeedback(message, celebrate = false) {
   els.reactionFeedback.classList.toggle("is-celebrating", celebrate);
 }
 
-function updateReactionStats() {
+async function updateReactionStats() {
   if (!els.reactionStats) return;
-  const counts = getReactionCounts();
+  const counts = await getReactionCounts();
   const total = (counts.like || 0) + (counts.love || 0);
   els.reactionStats.textContent = total
-    ? `${total} reacciones guardadas en esta prueba local.`
-    : "Versi\u00f3n local: aqu\u00ed veremos el contador antes de conectarlo a Supabase.";
+    ? `${total.toLocaleString("es-CO")} personas han reaccionado a Sublimo.`
+    : "Tu reacci\u00f3n ayuda a mejorar la experiencia.";
 }
 
-function getReactionCounts() {
+async function saveReactionToSupabase(reaction) {
+  const config = window.SUBLIMO_SUPABASE;
+  if (!config?.url || !config?.anonKey) {
+    saveReactionLocally(reaction);
+    return;
+  }
+
+  const endpoint = `${config.url.replace(/\/$/, "")}/rest/v1/rpc/increment_reaction_count`;
+
   try {
-    return { like: 0, love: 0, ...JSON.parse(localStorage.getItem(REACTION_COUNTS_KEY)) };
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        apikey: config.anonKey,
+        Authorization: `Bearer ${config.anonKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ reaction_name: reaction })
+    });
+
+    if (!response.ok) throw new Error(`Supabase respondi\u00f3 ${response.status}`);
+
+    const data = await response.json();
+    const row = Array.isArray(data) ? data[0] : data;
+    if (row?.reaction && Number.isFinite(Number(row.total))) {
+      const counts = getLocalReactionCounts();
+      counts[row.reaction] = Number(row.total);
+      localStorage.setItem(REACTION_COUNTS_KEY, JSON.stringify(counts));
+    }
+  } catch (error) {
+    console.warn("No se pudo guardar la reacci\u00f3n en Supabase.", error);
+    saveReactionLocally(reaction);
+  }
+}
+
+async function getReactionCounts() {
+  const config = window.SUBLIMO_SUPABASE;
+  if (!config?.url || !config?.anonKey) return getLocalReactionCounts();
+
+  const endpoint = `${config.url.replace(/\/$/, "")}/rest/v1/reaction_counts?select=reaction,total`;
+
+  try {
+    const response = await fetch(endpoint, {
+      headers: {
+        apikey: config.anonKey,
+        Authorization: `Bearer ${config.anonKey}`
+      }
+    });
+
+    if (!response.ok) throw new Error(`Supabase respondi\u00f3 ${response.status}`);
+
+    const data = await response.json();
+    const counts = { ...DEFAULT_REACTION_COUNTS };
+    data.forEach((row) => {
+      if (row.reaction === "like" || row.reaction === "love") {
+        counts[row.reaction] = Number(row.total) || 0;
+      }
+    });
+    localStorage.setItem(REACTION_COUNTS_KEY, JSON.stringify(counts));
+    return counts;
+  } catch (error) {
+    console.warn("No se pudieron cargar las reacciones desde Supabase.", error);
+    return getLocalReactionCounts();
+  }
+}
+
+function saveReactionLocally(reaction) {
+  const counts = getLocalReactionCounts();
+  counts[reaction] = (counts[reaction] || 0) + 1;
+  localStorage.setItem(REACTION_COUNTS_KEY, JSON.stringify(counts));
+}
+
+function getLocalReactionCounts() {
+  try {
+    return { ...DEFAULT_REACTION_COUNTS, ...JSON.parse(localStorage.getItem(REACTION_COUNTS_KEY)) };
   } catch {
-    return { like: 0, love: 0 };
+    return { ...DEFAULT_REACTION_COUNTS };
   }
 }
 
