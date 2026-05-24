@@ -634,13 +634,19 @@ async function handleReaction(reaction) {
     return;
   }
 
-  localStorage.setItem(REACTION_KEY, JSON.stringify({ reaction, createdAt: Date.now() }));
-
   const message = reaction === "love"
     ? "Nos encanta que te encante. Gracias por apoyar a Sublimo."
     : "Gracias por tu apoyo. Tu reacci\u00f3n nos ayuda a mejorar.";
+
+  const saved = await saveReactionToSupabase(reaction);
+  if (!saved) {
+    showReactionFeedback("A\u00fan no pudimos guardar tu reacci\u00f3n. Falta activar el contador en Supabase.");
+    await updateReactionStats();
+    return;
+  }
+
+  localStorage.setItem(REACTION_KEY, JSON.stringify({ reaction, createdAt: Date.now() }));
   showReactionFeedback(message, true);
-  await saveReactionToSupabase(reaction);
   await updateReactionStats();
   window.setTimeout(closeReactionPrompt, 2600);
 }
@@ -664,7 +670,7 @@ async function saveReactionToSupabase(reaction) {
   const config = window.SUBLIMO_SUPABASE;
   if (!config?.url || !config?.anonKey) {
     saveReactionLocally(reaction);
-    return;
+    return true;
   }
 
   const endpoint = `${config.url.replace(/\/$/, "")}/rest/v1/rpc/increment_reaction_count`;
@@ -688,10 +694,12 @@ async function saveReactionToSupabase(reaction) {
       const counts = getLocalReactionCounts();
       counts[row.reaction] = Number(row.total);
       localStorage.setItem(REACTION_COUNTS_KEY, JSON.stringify(counts));
+      return true;
     }
+    return false;
   } catch (error) {
     console.warn("No se pudo guardar la reacci\u00f3n en Supabase.", error);
-    saveReactionLocally(reaction);
+    return false;
   }
 }
 
