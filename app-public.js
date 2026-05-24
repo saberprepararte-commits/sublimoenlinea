@@ -20,7 +20,8 @@ const PRODUCT_FABRIC = "Algodón 94% y elastano 6%";
 const VISUAL_THEMES = [
   { id: "urbano", label: "Urbano" },
   { id: "dulce", label: "Dulce" },
-  { id: "minimal", label: "Minimal" }
+  { id: "minimal", label: "Minimal" },
+  { id: "neon", label: "Ne\u00f3n" }
 ];
 
 const starterProducts = [

@@ -74,6 +74,21 @@
   --shadow: 0 16px 44px rgba(18, 22, 20, 0.11);
 }
 
+:root[data-style="neon"] {
+  color-scheme: dark;
+  --bg: #0f1111;
+  --panel: #171a1a;
+  --panel-strong: #202424;
+  --text: #f8f4ec;
+  --muted: #c9c1b4;
+  --line: #343a3a;
+  --accent: #2fffd0;
+  --accent-dark: #77ffe3;
+  --terracotta: #ff6ec7;
+  --ink: #f8f4ec;
+  --shadow: 0 20px 50px rgba(0, 0, 0, 0.38);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -774,6 +789,7 @@ select {
 }
 
 .product-card {
+  position: relative;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -781,6 +797,34 @@ select {
   box-shadow: var(--shadow);
   cursor: pointer;
   transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+:root[data-style="neon"] .product-card {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+  box-shadow:
+    0 0 0 1px rgba(47, 255, 208, 0.16),
+    0 0 24px rgba(47, 255, 208, 0.18),
+    0 0 46px rgba(255, 110, 199, 0.08),
+    var(--shadow);
+}
+
+:root[data-style="neon"] .product-card:hover,
+:root[data-style="neon"] .product-card:focus-visible {
+  border-color: color-mix(in srgb, var(--terracotta) 48%, var(--accent));
+  box-shadow:
+    0 0 0 1px rgba(255, 110, 199, 0.24),
+    0 0 28px rgba(47, 255, 208, 0.28),
+    0 0 64px rgba(255, 110, 199, 0.18),
+    var(--shadow);
+}
+
+:root[data-style="neon"] .roulette-card {
+  border-color: color-mix(in srgb, #f1c95d 58%, var(--line));
+  box-shadow:
+    0 0 0 1px rgba(241, 201, 93, 0.22),
+    0 0 34px rgba(241, 201, 93, 0.22),
+    0 0 60px rgba(47, 255, 208, 0.12),
+    var(--shadow);
 }
 
 .product-card:hover,
