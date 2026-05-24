@@ -62,7 +62,7 @@ begin
 
   insert into public.reaction_counts (reaction, total)
   values (reaction_name, 1)
-  on conflict (reaction) do update
+  on conflict on constraint reaction_counts_pkey do update
   set total = public.reaction_counts.total + 1,
       updated_at = now();
 

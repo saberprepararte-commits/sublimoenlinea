@@ -109,6 +109,11 @@
               <option value="price-desc">Mayor precio</option>
               <option value="name">Nombre A-Z</option>
             </select>
+            <button class="favorites-toggle" id="favoritesToggle" type="button" aria-pressed="false">
+              <span data-icon="heart"></span>
+              <span>Favoritos</span>
+              <strong id="favoritesCount">0</strong>
+            </button>
           </div>
         </div>
 
@@ -147,6 +152,10 @@
           <h2 id="quickViewTitle"></h2>
           <p id="quickViewDescription"></p>
           <strong id="quickViewPrice"></strong>
+          <button class="favorite-detail-button" id="quickViewFavorite" type="button" aria-pressed="false">
+            <span data-icon="heart"></span>
+            Guardar en favoritos
+          </button>
           <a class="primary-link quick-view-whatsapp" id="quickViewWhatsapp" href="#" target="_blank" rel="noopener">
             <span data-icon="message-circle"></span>
             Consultar por WhatsApp

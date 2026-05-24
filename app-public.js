@@ -1,6 +1,7 @@
 const STORAGE_KEY = "gallery-store-template-v1";
 const THEME_KEY = "gallery-store-theme";
 const PROMO_DISMISS_KEY = "sublimo-promo-dismissed";
+const FAVORITES_KEY = "sublimo-favorites-v1";
 const REACTION_KEY = "sublimo-reaction-v1";
 const REACTION_COUNTS_KEY = "sublimo-reaction-counts-v1";
 const REACTION_PROMPT_DELAY = 10000;
@@ -73,6 +74,9 @@ let store = loadStore();
 let visibleProductCount = PAGE_SIZE;
 let productShuffleSeed = Date.now();
 let productShuffleTimerId = null;
+let favoriteProductIds = loadFavoriteProductIds();
+let showingFavoritesOnly = false;
+let currentQuickViewProduct = null;
 let rouletteState = {
   product: null,
   hasResult: false,
@@ -101,6 +105,7 @@ const els = {
   categoryChips: document.querySelector("#categoryChips"),
   loadMoreButton: document.querySelector("#loadMoreButton"),
   resultCount: document.querySelector("#resultCount"),
+  toast: document.querySelector("#toast"),
   quickView: document.querySelector("#quickView"),
   quickViewImage: document.querySelector("#quickViewImage"),
   quickViewCategory: document.querySelector("#quickViewCategory"),
@@ -109,6 +114,9 @@ const els = {
   quickViewDescription: document.querySelector("#quickViewDescription"),
   quickViewPrice: document.querySelector("#quickViewPrice"),
   quickViewWhatsapp: document.querySelector("#quickViewWhatsapp"),
+  quickViewFavorite: document.querySelector("#quickViewFavorite"),
+  favoritesToggle: document.querySelector("#favoritesToggle"),
+  favoritesCount: document.querySelector("#favoritesCount"),
   themeToggle: document.querySelector("#themeToggle"),
   themeLabel: document.querySelector("#themeLabel"),
   reactionPrompt: document.querySelector("#reactionPrompt"),
@@ -229,6 +237,10 @@ function bindEvents() {
   els.searchInput?.addEventListener("input", resetProductView);
   els.categoryFilter?.addEventListener("change", resetProductView);
   els.sortFilter?.addEventListener("change", resetProductView);
+  els.favoritesToggle?.addEventListener("click", toggleFavoritesView);
+  els.quickViewFavorite?.addEventListener("click", () => {
+    if (currentQuickViewProduct) toggleFavorite(currentQuickViewProduct);
+  });
   els.loadMoreButton?.addEventListener("click", showMoreProducts);
   els.promoClose?.addEventListener("click", closePromoBanner);
   els.promoPrev?.addEventListener("click", () => scrollPromoProducts(-1));
@@ -388,12 +400,16 @@ function renderProducts() {
       .toLowerCase()
       .includes(term);
     const matchesCategory = category === "all" || product.category === category;
-    return matchesText && matchesCategory;
+    const matchesFavorite = !showingFavoritesOnly || favoriteProductIds.has(getProductKey(product));
+    return matchesText && matchesCategory && matchesFavorite;
   }));
   const products = shouldAutoShuffleProducts() ? shuffleProducts(sortedProducts, productShuffleSeed) : sortedProducts;
 
   els.productGrid.innerHTML = "";
   els.emptyState.hidden = products.length > 0;
+  els.emptyState.textContent = showingFavoritesOnly
+    ? "A\u00fan no tienes productos favoritos."
+    : "No hay productos para mostrar.";
   const visibleProducts = products.slice(0, visibleProductCount);
 
   if (products.length) {
@@ -401,6 +417,7 @@ function renderProducts() {
   }
 
   visibleProducts.forEach((product) => {
+    const isSaved = isFavorite(product);
     const card = document.createElement("article");
     card.className = "product-card";
     card.tabIndex = 0;
@@ -410,6 +427,9 @@ function renderProducts() {
       <div class="product-image">
         <img src="${escapeAttribute(normalizeImageUrl(product.image))}" alt="${escapeAttribute(product.name)}" loading="lazy">
         <span class="badge">${escapeHtml(product.featured ? "Destacado" : product.status)}</span>
+        <button class="favorite-button" type="button" aria-label="${isSaved ? "Quitar de favoritos" : "Guardar en favoritos"}" aria-pressed="${String(isSaved)}" title="${isSaved ? "Quitar de favoritos" : "Guardar en favoritos"}">
+          <span data-icon="heart"></span>
+        </button>
       </div>
       <div class="product-body">
         <div class="product-meta">
@@ -427,7 +447,7 @@ function renderProducts() {
       </div>
     `;
     card.addEventListener("click", (event) => {
-      if (event.target.closest("a")) return;
+      if (event.target.closest("a, button")) return;
       openQuickView(product);
     });
     card.addEventListener("keydown", (event) => {
@@ -436,6 +456,7 @@ function renderProducts() {
         openQuickView(product);
       }
     });
+    card.querySelector(".favorite-button")?.addEventListener("click", () => toggleFavorite(product));
     els.productGrid.append(card);
   });
 
@@ -448,6 +469,7 @@ function renderProducts() {
       : "";
   }
 
+  updateFavoriteControls();
   refreshIcons();
 }
 
@@ -570,6 +592,7 @@ function shouldAutoShuffleProducts() {
 function openQuickView(product) {
   if (!els.quickView) return;
 
+  currentQuickViewProduct = product;
   const imageUrl = normalizeImageUrl(product.image);
   els.quickViewImage.src = imageUrl;
   els.quickViewImage.alt = product.name;
@@ -579,6 +602,7 @@ function openQuickView(product) {
   els.quickViewDescription.textContent = product.description;
   els.quickViewPrice.textContent = formatPrice(product.price);
   els.quickViewWhatsapp.href = getWhatsappUrl(buildProductMessage(product));
+  updateQuickViewFavoriteButton(product);
   els.quickView.hidden = false;
   document.body.classList.add("quick-view-open");
   refreshIcons();
@@ -587,7 +611,87 @@ function openQuickView(product) {
 function closeQuickView() {
   if (!els.quickView || els.quickView.hidden) return;
   els.quickView.hidden = true;
+  currentQuickViewProduct = null;
   document.body.classList.remove("quick-view-open");
+}
+
+function loadFavoriteProductIds() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(FAVORITES_KEY));
+    return new Set(Array.isArray(saved) ? saved : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveFavoriteProductIds() {
+  localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favoriteProductIds]));
+}
+
+function getProductKey(product) {
+  return String(product.id || `${product.name}-${product.image}`);
+}
+
+function isFavorite(product) {
+  return favoriteProductIds.has(getProductKey(product));
+}
+
+function toggleFavorite(product) {
+  const key = getProductKey(product);
+  const willSave = !favoriteProductIds.has(key);
+
+  if (willSave) {
+    favoriteProductIds.add(key);
+    showToast("Producto guardado en favoritos.");
+  } else {
+    favoriteProductIds.delete(key);
+    showToast("Producto eliminado de favoritos.");
+  }
+
+  saveFavoriteProductIds();
+  renderProducts();
+  if (currentQuickViewProduct) {
+    updateQuickViewFavoriteButton(currentQuickViewProduct);
+    refreshIcons();
+  }
+}
+
+function toggleFavoritesView() {
+  showingFavoritesOnly = !showingFavoritesOnly;
+  resetProductView();
+}
+
+function getAvailableFavoriteCount() {
+  const availableKeys = new Set(store.products.map(getProductKey));
+  return [...favoriteProductIds].filter((key) => availableKeys.has(key)).length;
+}
+
+function updateFavoriteControls() {
+  const count = getAvailableFavoriteCount();
+  if (els.favoritesCount) els.favoritesCount.textContent = String(count);
+  if (els.favoritesToggle) {
+    els.favoritesToggle.setAttribute("aria-pressed", String(showingFavoritesOnly));
+    els.favoritesToggle.classList.toggle("is-active", showingFavoritesOnly);
+  }
+}
+
+function updateQuickViewFavoriteButton(product) {
+  if (!els.quickViewFavorite) return;
+  const saved = isFavorite(product);
+  els.quickViewFavorite.setAttribute("aria-pressed", String(saved));
+  els.quickViewFavorite.classList.toggle("is-active", saved);
+  els.quickViewFavorite.innerHTML = `
+    <span data-icon="heart"></span>
+    ${saved ? "Guardado en favoritos" : "Guardar en favoritos"}
+  `;
+}
+
+function showToast(message) {
+  if (!els.toast) return;
+  els.toast.textContent = message;
+  els.toast.classList.add("is-visible");
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => els.toast.classList.remove("is-visible"), 2400);
 }
 
 function scheduleReactionPrompt() {
