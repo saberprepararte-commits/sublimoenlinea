@@ -1110,7 +1110,7 @@ select {
   display: grid;
   grid-template-columns: minmax(280px, 0.95fr) minmax(280px, 1.05fr);
   width: min(980px, 100%);
-  max-height: min(720px, calc(100vh - 48px));
+  max-height: calc(100vh - 48px);
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: calc(var(--radius) + 8px);
@@ -1156,8 +1156,10 @@ select {
 .quick-view-content {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 18px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
   padding: clamp(24px, 4vw, 46px);
 }
 
@@ -1238,8 +1240,18 @@ select {
   border-radius: 999px;
   background: var(--panel);
   color: var(--text);
+  cursor: pointer;
   font-size: 0.8rem;
   font-weight: 800;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.detail-chip:hover,
+.detail-chip[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--accent) 52%, var(--line));
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+  color: var(--accent-dark);
+  transform: translateY(-1px);
 }
 
 .color-chip {

@@ -83,6 +83,7 @@ let productShuffleTimerId = null;
 let favoriteProductIds = loadFavoriteProductIds();
 let showingFavoritesOnly = false;
 let currentQuickViewProduct = null;
+let selectedQuickViewOptions = { size: "", color: "" };
 let rouletteState = {
   product: null,
   hasResult: false,
@@ -602,6 +603,7 @@ function openQuickView(product) {
   if (!els.quickView) return;
 
   currentQuickViewProduct = product;
+  selectedQuickViewOptions = { size: "", color: "" };
   const imageUrl = normalizeImageUrl(product.image);
   els.quickViewImage.src = imageUrl;
   els.quickViewImage.alt = product.name;
@@ -611,7 +613,7 @@ function openQuickView(product) {
   els.quickViewDescription.textContent = product.description;
   els.quickViewPrice.textContent = formatPrice(product.price);
   renderQuickViewDetails();
-  els.quickViewWhatsapp.href = getWhatsappUrl(buildProductMessage(product));
+  updateQuickViewWhatsappLink();
   updateQuickViewFavoriteButton(product);
   els.quickView.hidden = false;
   document.body.classList.add("quick-view-open");
@@ -622,6 +624,7 @@ function closeQuickView() {
   if (!els.quickView || els.quickView.hidden) return;
   els.quickView.hidden = true;
   currentQuickViewProduct = null;
+  selectedQuickViewOptions = { size: "", color: "" };
   document.body.classList.remove("quick-view-open");
 }
 
@@ -700,22 +703,55 @@ function renderQuickViewDetails() {
   if (els.quickViewSizes) {
     els.quickViewSizes.innerHTML = PRODUCT_SIZE_GROUPS.map((group) => `
       <span class="detail-group-label">${escapeHtml(group.label)}</span>
-      ${group.values.map((size) => `<span class="detail-chip">${escapeHtml(size)}</span>`).join("")}
+      ${group.values.map((size) => `
+        <button class="detail-chip" type="button" data-detail-type="size" data-detail-value="${escapeAttribute(size)}" aria-pressed="false">
+          ${escapeHtml(size)}
+        </button>
+      `).join("")}
     `).join("");
   }
 
   if (els.quickViewColors) {
     els.quickViewColors.innerHTML = PRODUCT_COLORS.map((color) => `
-      <span class="detail-chip color-chip" style="--swatch:${getColorSwatch(color)}">
+      <button class="detail-chip color-chip" type="button" style="--swatch:${getColorSwatch(color)}" data-detail-type="color" data-detail-value="${escapeAttribute(color)}" aria-pressed="false">
         <span aria-hidden="true"></span>
         ${escapeHtml(color)}
-      </span>
+      </button>
     `).join("");
   }
+
+  els.quickViewSizes?.querySelectorAll("[data-detail-type]").forEach((button) => {
+    button.addEventListener("click", () => selectQuickViewOption(button));
+  });
+  els.quickViewColors?.querySelectorAll("[data-detail-type]").forEach((button) => {
+    button.addEventListener("click", () => selectQuickViewOption(button));
+  });
 
   if (els.quickViewFabric) {
     els.quickViewFabric.textContent = PRODUCT_FABRIC;
   }
+}
+
+function selectQuickViewOption(button) {
+  const type = button.dataset.detailType;
+  const value = button.dataset.detailValue || "";
+  if (!type || !value) return;
+
+  selectedQuickViewOptions[type] = selectedQuickViewOptions[type] === value ? "" : value;
+  syncQuickViewOptionButtons(type);
+  updateQuickViewWhatsappLink();
+}
+
+function syncQuickViewOptionButtons(type) {
+  const selected = selectedQuickViewOptions[type] || "";
+  document.querySelectorAll(`[data-detail-type="${type}"]`).forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.detailValue === selected));
+  });
+}
+
+function updateQuickViewWhatsappLink() {
+  if (!currentQuickViewProduct || !els.quickViewWhatsapp) return;
+  els.quickViewWhatsapp.href = getWhatsappUrl(buildProductMessage(currentQuickViewProduct, selectedQuickViewOptions));
 }
 
 function getColorSwatch(color) {
@@ -910,10 +946,11 @@ function sortProducts(products) {
   });
 }
 
-function buildProductMessage(product) {
+function buildProductMessage(product, options = {}) {
   return buildProductInquiryMessage(
     product,
-    `Hola, me interesa este producto de ${store.name}:`
+    `Hola, me interesa este producto de ${store.name}:`,
+    options
   );
 }
 
@@ -931,7 +968,7 @@ function buildRouletteMessage(product) {
   );
 }
 
-function buildProductInquiryMessage(product, intro) {
+function buildProductInquiryMessage(product, intro, options = {}) {
   const lines = [
     intro,
     "",
@@ -943,6 +980,14 @@ function buildProductInquiryMessage(product, intro) {
     `Colores: ${PRODUCT_COLORS.join(", ")}`,
     `Tela: ${PRODUCT_FABRIC}`
   ];
+
+  const sizeLineIndex = lines.findIndex((line) => line.startsWith("Tallas:"));
+  if (sizeLineIndex >= 0) {
+    lines[sizeLineIndex] = "Tallas disponibles: ni\u00f1os y ni\u00f1as 2-4, 6-8, 10-12, 14-16 | adultos S, M, L, XL";
+  }
+
+  if (options.size) lines.push(`Talla elegida: ${options.size}`);
+  if (options.color) lines.push(`Color elegido: ${options.color}`);
 
   const imageUrl = normalizeImageUrl(product.image);
   if (imageUrl) {
